@@ -38,6 +38,8 @@ class Svn extends BlockingSvnUtil
         
         $bashCommand = $this->getCommand($command, $url, $path);
         $process = new Process($bashCommand, $cwd);
+        $output = null;
+        $errorOutput = null;
         $authErrorHandler = $this->getAuthErrorHandler(
             $deferredResult,
             $command,
@@ -49,19 +51,18 @@ class Svn extends BlockingSvnUtil
         
         $process->on('exit', function ($status) use (
             $deferredResult,
+            &$output,
+            &$errorOutput,
             $authErrorHandler,
-            $bashCommand,
-            $process
+            $bashCommand
         ) {
-            $output = stream_get_contents($process->stdout->stream);
-            
             if (0 === $status) {
                 $deferredResult->resolve($output);
                 return;
             }
             
             if (empty($output)) {
-                $output = stream_get_contents($process->stderr->stream);
+                $output = $errorOutput;
             }
 
             // the error is not auth-related
@@ -78,7 +79,20 @@ class Svn extends BlockingSvnUtil
             $authErrorHandler($output);
         });
         
-        $process->start($this->eventLoop, 0.01);
+        $eventLoop = $this->eventLoop;
+        $stdOutDataHandler = $this->getStdOutDataHandler($this->io, $verbose, $output);
+        $stdErrDataHandler = $this->getStdErrDataHandler($errorOutput);
+        
+        $eventLoop->addTimer(0.001, function () use (
+            $eventLoop,
+            $process,
+            $stdOutDataHandler,
+            $stdErrDataHandler
+        ) {
+            $process->start($eventLoop, 0.1);
+            $process->stdout->on('data', $stdOutDataHandler);
+            $process->stderr->on('data', $stdErrDataHandler);
+        });
         
         return $deferredResult->promise();
     }
@@ -116,5 +130,25 @@ class Svn extends BlockingSvnUtil
         throw new \RuntimeException(
             'wrong credentials provided ('.$output.')'
         );
+    }
+    
+    protected function getStdOutDataHandler($io, $verbose, &$output)
+    {
+        return function ($data) use ($io, $verbose, &$output) {
+            if ('Redirecting to URL ' === substr($data, 0, 19)) {
+                return;
+            }
+            $output .= $data;
+            if ($verbose) {
+                $io->write($data, false);
+            }
+        };
+    }
+    
+    protected function getStdErrDataHandler(&$errorOutput)
+    {
+        return function ($data) use (&$errorOutput) {
+            $errorOutput .= $data;
+        };
     }
 }

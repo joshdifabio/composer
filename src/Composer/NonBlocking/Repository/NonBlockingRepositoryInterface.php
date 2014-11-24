@@ -12,11 +12,13 @@
 
 namespace Composer\NonBlocking\Repository;
 
+use Composer\Repository\RepositoryInterface as BlockingRepositoryInterface;
+use React\EventLoop\LoopInterface;
+
 /**
- * @author Jordi Boggiano <j.boggiano@seld.be>
  * @author Josh Di Fabio <joshdifabio@gmail.com>
  */
-interface InstalledRepositoryInterface extends WritableRepositoryInterface
+interface NonBlockingRepositoryInterface extends BlockingRepositoryInterface
 {
-    
+    public function initializeNonBlocking(LoopInterface $eventLoop);
 }

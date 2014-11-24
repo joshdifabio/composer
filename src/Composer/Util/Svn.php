@@ -99,7 +99,9 @@ class Svn
      */
     public function execute($command, $url, $cwd = null, $path = null, $verbose = false)
     {
+        $e = new \Exception;
         $svnCommand = $this->getCommand($command, $url, $path);
+        echo "Synchronous SVN command:\n$svnCommand\nTrace:\n$e\n----------------------------\n";
         $output = null;
         $io = $this->io;
         $handler = function ($type, $buffer) use (&$output, $io, $verbose) {

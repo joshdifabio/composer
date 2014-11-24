@@ -16,6 +16,7 @@ use Composer\Config\JsonConfigSource;
 use Composer\Json\JsonFile;
 use Composer\IO\IOInterface;
 use Composer\Package\Archiver;
+use Composer\NonBlocking\Repository\RepositoryManager as NonBlockingRepositoryManager;
 use Composer\Repository\RepositoryManager;
 use Composer\Repository\RepositoryInterface;
 use Composer\Util\ProcessExecutor;
@@ -311,13 +312,25 @@ class Factory
      */
     protected function createRepositoryManager(IOInterface $io, Config $config, EventDispatcher $eventDispatcher = null)
     {
-        $rm = new RepositoryManager($io, $config, $eventDispatcher);
+//        $rm = new RepositoryManager($io, $config, $eventDispatcher);
+//        $rm->setRepositoryClass('composer', 'Composer\Repository\ComposerRepository');
+//        $rm->setRepositoryClass('vcs', 'Composer\Repository\VcsRepository');
+//        $rm->setRepositoryClass('package', 'Composer\Repository\PackageRepository');
+//        $rm->setRepositoryClass('pear', 'Composer\Repository\PearRepository');
+//        $rm->setRepositoryClass('git', 'Composer\Repository\VcsRepository');
+//        $rm->setRepositoryClass('svn', 'Composer\Repository\VcsRepository');
+//        $rm->setRepositoryClass('perforce', 'Composer\Repository\VcsRepository');
+//        $rm->setRepositoryClass('hg', 'Composer\Repository\VcsRepository');
+//        $rm->setRepositoryClass('artifact', 'Composer\Repository\ArtifactRepository');
+        
+        $rm = new NonBlockingRepositoryManager($io, $config, $eventDispatcher);
+        
         $rm->setRepositoryClass('composer', 'Composer\Repository\ComposerRepository');
-        $rm->setRepositoryClass('vcs', 'Composer\Repository\VcsRepository');
+        $rm->setRepositoryClass('vcs', 'Composer\NonBlocking\Repository\VcsRepository');
         $rm->setRepositoryClass('package', 'Composer\Repository\PackageRepository');
         $rm->setRepositoryClass('pear', 'Composer\Repository\PearRepository');
         $rm->setRepositoryClass('git', 'Composer\Repository\VcsRepository');
-        $rm->setRepositoryClass('svn', 'Composer\Repository\VcsRepository');
+        $rm->setRepositoryClass('svn', 'Composer\NonBlocking\Repository\VcsRepository');
         $rm->setRepositoryClass('perforce', 'Composer\Repository\VcsRepository');
         $rm->setRepositoryClass('hg', 'Composer\Repository\VcsRepository');
         $rm->setRepositoryClass('artifact', 'Composer\Repository\ArtifactRepository');

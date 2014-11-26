@@ -65,22 +65,6 @@ class SvnDriver extends BlockingSvnDriver implements VcsDriverInterface
             $this->initBranches(),
             $this->initTags(),
         ));
-        
-        /*
-        ->then(function () use (&$branches, &$tags) {
-            $lastPromise = new FulfilledPromise;
-            
-            $identifiers = array_merge(array_values($branches), array_values($tags));
-            
-            foreach ($identifiers as $identifier) {
-                $lastPromise = $lastPromise->then(function () use ($identifier) {
-                    $this->initComposerInformation($identifier);
-                });
-            }
-            
-            return $lastPromise;
-        });
-         */
     }
     
     public function initBranches()

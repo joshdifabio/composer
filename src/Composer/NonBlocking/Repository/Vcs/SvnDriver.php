@@ -20,6 +20,7 @@ use Composer\Repository\Vcs\SvnDriver as BlockingSvnDriver;
 use React\EventLoop\LoopInterface;
 use React\Promise\When;
 use React\Promise\FulfilledPromise;
+use Composer\Downloader\TransportException;
 
 /**
  * @author Josh Di Fabio <jd@amp.co>
@@ -105,6 +106,21 @@ class SvnDriver extends BlockingSvnDriver implements VcsDriverInterface
             ->then(array($this, 'processTags'));
     }
     
+    public function getComposerInformation($identifier)
+    {
+        $identifier = '/' . trim($identifier, '/') . '/';
+        
+        if (!isset($this->infoCache[$identifier])) {
+            return parent::getComposerInformation($identifier);
+        }
+        
+        if ($this->infoCache[$identifier] instanceof \Exception) {
+            throw $this->infoCache[$identifier];
+        }
+        
+        return $this->infoCache[$identifier];
+    }
+    
     public function initComposerInformation($identifier)
     {
         $identifier = '/' . trim($identifier, '/') . '/';
@@ -161,16 +177,24 @@ class SvnDriver extends BlockingSvnDriver implements VcsDriverInterface
                     return $composer;
                 },
                 function (\Exception $e) {
-                    if ($e instanceof \RuntimeException) {
+                    if (strstr($e->getMessage(), '160013')) {
                         return false;
+                    }
+                    if ($e instanceof \RuntimeException) {
+                        $e = new TransportException($e->getMessage());
                     }
                     throw $e;
                 }
             )
-            ->then(function ($composer) use ($identifier, $cache, &$infoCache) {
-                $cache->write($identifier . '.json', json_encode($composer));
-                $infoCache[$identifier] = $composer;
-            });
+            ->then(
+                function ($result) use ($identifier, $cache, &$infoCache) {
+                    $cache->write($identifier . '.json', json_encode($result));
+                    $infoCache[$identifier] = $result;
+                },
+                function (\Exception $e) use ($identifier, &$infoCache) {
+                    $infoCache[$identifier] = $e;
+                }
+            );
     }
     
     public function processTrunk($svnOutput)

@@ -28,14 +28,11 @@ use React\EventLoop\LoopInterface;
  */
 class VcsRepository extends BlockingVcsRepository implements NonBlockingRepositoryInterface
 {
-    private $constructE;
     private $loadPackagesPromise;
     private $driver;
 
     public function __construct(array $repoConfig, IOInterface $io, Config $config, EventDispatcher $dispatcher = null, array $drivers = null)
     {
-        $this->constructE = new \Exception;
-        
         $drivers = $drivers ?: array(
             'github'        => 'Composer\Repository\Vcs\GitHubDriver',
             'git-bitbucket' => 'Composer\Repository\Vcs\GitBitbucketDriver',
@@ -82,12 +79,6 @@ class VcsRepository extends BlockingVcsRepository implements NonBlockingReposito
     public function getDriver()
     {
         if (is_null($this->driver)) {
-            if (!$this->loadPackagesPromise) {
-                $e = new \Exception;
-                echo "getDriver() called without any call to initializeNonBlocking():\n$e\n{$this->constructE}\n";
-                die;
-            }
-            
             $driver = $this->getDriverInstance();
             $driver->initialize();
             $this->driver = $driver;

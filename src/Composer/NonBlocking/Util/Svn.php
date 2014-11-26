@@ -13,7 +13,6 @@
 namespace Composer\NonBlocking\Util;
 
 use Composer\Util\Svn as BlockingSvnUtil;
-use React\EventLoop\LoopInterface;
 use Composer\Config;
 use Composer\IO\IOInterface;
 
@@ -22,20 +21,17 @@ use Composer\IO\IOInterface;
  */
 class Svn extends BlockingSvnUtil
 {
-    protected $eventLoop;
     protected $processExecutor;
     
     public function __construct(
-        LoopInterface $eventLoop,
         $url,
         IOInterface $io,
         Config $config,
-        ProcessExecutor $processExecutor = null
+        ProcessExecutor $processExecutor
     ) {
         parent::__construct($url, $io, $config);
         
-        $this->eventLoop = $eventLoop;
-        $this->processExecutor = $processExecutor ?: new ProcessExecutor;
+        $this->processExecutor = $processExecutor;
     }
     
     public function execute($command, $url, $cwd = null, $path = null, $verbose = false)
@@ -44,7 +40,7 @@ class Svn extends BlockingSvnUtil
         $that = $this;
         $execArgs = func_get_args();
         
-        return $this->processExecutor->execute($this->eventLoop, $bashCommand, $cwd)->then(
+        return $this->processExecutor->execute($bashCommand, $cwd)->then(
             function (ProcessResult $result) use ($that, $verbose, $execArgs) {
                 return $that->handleProcessResult($result, $verbose, $execArgs);
             }

@@ -24,10 +24,12 @@ class ProcessExecutor
 {
     private static $invocationBuffer;
     
+    private $eventLoop;
     private $execute;
     
-    public function __construct()
+    public function __construct(LoopInterface $eventLoop)
     {
+        $this->eventLoop = $eventLoop;
         $this->initExecute();
     }
     
@@ -36,10 +38,9 @@ class ProcessExecutor
         self::getInvocationBuffer()->setInvocationLimit($processLimit);
     }
     
-    public function execute(LoopInterface $eventLoop, $command, $cwd, $exitPollInterval = 0.1)
+    public function execute($command, $cwd, $exitPollInterval = 0.1)
     {
         return self::getInvocationBuffer()->invoke($this->execute, array(
-            $eventLoop,
             $command,
             $cwd,
             $exitPollInterval
@@ -48,9 +49,10 @@ class ProcessExecutor
     
     private function initExecute()
     {
+        $eventLoop = $this->eventLoop;
         $streamToString = $this->getStreamToStringFunction();
         
-        $this->execute = function ($eventLoop, $command, $cwd, $interval) use ($streamToString) {
+        $this->execute = function ($command, $cwd, $interval) use ($eventLoop, $streamToString) {
             $deferred = new Deferred;
 
             $stdOut = '';
@@ -94,7 +96,7 @@ class ProcessExecutor
     private static function getInvocationBuffer()
     {
         if (is_null(self::$invocationBuffer)) {
-            self::$invocationBuffer = new InvocationBuffer(100);
+            self::$invocationBuffer = new InvocationBuffer(200);
         }
         
         return self::$invocationBuffer;

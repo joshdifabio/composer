@@ -16,6 +16,7 @@ use Composer\Cache;
 use Composer\Json\JsonFile;
 use Composer\Util\Svn as BlockingSvnUtil;
 use Composer\NonBlocking\Util\Svn as SvnUtil;
+use Composer\NonBlocking\Util\ProcessExecutor;
 use Composer\Repository\Vcs\SvnDriver as BlockingSvnDriver;
 use React\EventLoop\LoopInterface;
 use React\Promise\When;
@@ -274,10 +275,10 @@ class SvnDriver extends BlockingSvnDriver implements VcsDriverInterface
     {
         if (null === $this->nonBlockingUtil) {
             $this->nonBlockingUtil = new SvnUtil(
-                $this->eventLoop,
                 $this->baseUrl,
                 $this->io,
-                $this->config
+                $this->config,
+                new ProcessExecutor($this->eventLoop)
             );
             
             $this->nonBlockingUtil->setCacheCredentials($this->cacheCredentials);

@@ -19,15 +19,15 @@ use React\Promise\RejectedPromise;
 /**
  * @author Josh Di Fabio <jd@amp.co>
  */
-class InvokationBuffer
+class InvocationBuffer
 {
-    private $invokationLimit;
-    private $invokationCount;
-    private $invokationQueue = array();
+    private $invocationLimit;
+    private $invocationCount;
+    private $invocationQueue = array();
     
-    public function __construct($invokationLimit)
+    public function __construct($invocationLimit)
     {
-        $this->invokationLimit = $invokationLimit;
+        $this->invocationLimit = $invocationLimit;
     }
     
     public function invoke($callable, $args = array())
@@ -42,20 +42,20 @@ class InvokationBuffer
             );
     }
     
-    public function setInvokationLimit($invokationLimit)
+    public function setInvocationLimit($invocationLimit)
     {
-        $this->invokationLimit = $invokationLimit;
+        $this->invocationLimit = $invocationLimit;
     }
     
     public function handleResult($result = null)
     {
-        $this->invokationCount--;
+        $this->invocationCount--;
         
         while (
-            $this->invokationLimit > $this->invokationCount
-            && $deferredCommand = array_shift($this->invokationQueue)
+            $this->invocationLimit > $this->invocationCount
+            && $deferredCommand = array_shift($this->invocationQueue)
         ) {
-            $this->invokationCount++;
+            $this->invocationCount++;
             $deferredCommand->resolve();
         }
         
@@ -71,11 +71,11 @@ class InvokationBuffer
     
     private function getSlot()
     {
-        if ($this->invokationLimit > $this->invokationCount) {
-            $this->invokationCount++;
+        if ($this->invocationLimit > $this->invocationCount) {
+            $this->invocationCount++;
             return new FulfilledPromise;
         }
         
-        return $this->invokationQueue[] = new Deferred;
+        return $this->invocationQueue[] = new Deferred;
     }
 }

@@ -22,7 +22,7 @@ use React\Stream\Stream;
  */
 class ProcessExecutor
 {
-    private static $invokationBuffer;
+    private static $invocationBuffer;
     
     private $execute;
     
@@ -33,12 +33,12 @@ class ProcessExecutor
     
     public static function setProcessLimit($processLimit)
     {
-        self::getInvokationBuffer()->setInvokationLimit($processLimit);
+        self::getInvocationBuffer()->setInvocationLimit($processLimit);
     }
     
     public function execute(LoopInterface $eventLoop, $command, $cwd, $exitPollInterval = 0.1)
     {
-        return self::getInvokationBuffer()->invoke($this->execute, array(
+        return self::getInvocationBuffer()->invoke($this->execute, array(
             $eventLoop,
             $command,
             $cwd,
@@ -89,14 +89,14 @@ class ProcessExecutor
     }
     
     /**
-     * @return InvokationBuffer
+     * @return InvocationBuffer
      */
-    private static function getInvokationBuffer()
+    private static function getInvocationBuffer()
     {
-        if (is_null(self::$invokationBuffer)) {
-            self::$invokationBuffer = new InvokationBuffer(100);
+        if (is_null(self::$invocationBuffer)) {
+            self::$invocationBuffer = new InvocationBuffer(100);
         }
         
-        return self::$invokationBuffer;
+        return self::$invocationBuffer;
     }
 }

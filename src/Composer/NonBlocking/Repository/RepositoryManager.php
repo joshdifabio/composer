@@ -65,9 +65,6 @@ class RepositoryManager extends BlockingRepositoryManager
     {
         if (is_null($this->eventLoop)) {
             $this->eventLoop = LoopFactory::create();
-            $this->eventLoop->addPeriodicTimer(5, function () {
-                echo date("H:i:s\n");
-            });
         }
         
         return $this->eventLoop;

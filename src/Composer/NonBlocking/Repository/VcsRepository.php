@@ -36,7 +36,7 @@ class VcsRepository extends BlockingVcsRepository implements NonBlockingReposito
         $drivers = $drivers ?: array(
             'github'        => 'Composer\Repository\Vcs\GitHubDriver',
             'git-bitbucket' => 'Composer\Repository\Vcs\GitBitbucketDriver',
-            'git'           => 'Composer\Repository\Vcs\GitDriver',
+            'git'           => 'Composer\NonBlocking\Repository\Vcs\GitDriver',
             'hg-bitbucket'  => 'Composer\Repository\Vcs\HgBitbucketDriver',
             'hg'            => 'Composer\Repository\Vcs\HgDriver',
             'perforce'      => 'Composer\Repository\Vcs\PerforceDriver',

@@ -329,7 +329,7 @@ class Factory
         $rm->setRepositoryClass('vcs', 'Composer\NonBlocking\Repository\VcsRepository');
         $rm->setRepositoryClass('package', 'Composer\Repository\PackageRepository');
         $rm->setRepositoryClass('pear', 'Composer\Repository\PearRepository');
-        $rm->setRepositoryClass('git', 'Composer\Repository\VcsRepository');
+        $rm->setRepositoryClass('git', 'Composer\NonBlocking\Repository\VcsRepository');
         $rm->setRepositoryClass('svn', 'Composer\NonBlocking\Repository\VcsRepository');
         $rm->setRepositoryClass('perforce', 'Composer\Repository\VcsRepository');
         $rm->setRepositoryClass('hg', 'Composer\Repository\VcsRepository');

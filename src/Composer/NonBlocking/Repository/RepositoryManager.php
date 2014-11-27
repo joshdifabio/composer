@@ -16,14 +16,13 @@ use Composer\Repository\RepositoryManager as BlockingRepositoryManager;
 use Composer\Repository\RepositoryInterface as BlockingRepositoryInterface;
 use React\EventLoop\Factory as LoopFactory;
 use React\Promise\When;
-use React\Promise\RejectedPromise;
 
 /**
  * @author Josh Di Fabio <joshdifabio@gmail.com>
  */
 class RepositoryManager extends BlockingRepositoryManager
 {
-    private $repoLoadPromises = array();
+    private $repoInitPromises = array();
     private $eventLoop;
     
     /**
@@ -32,7 +31,7 @@ class RepositoryManager extends BlockingRepositoryManager
     public function addRepository(BlockingRepositoryInterface $repository)
     {
         if ($repository instanceof NonBlockingRepositoryInterface) {
-            $this->repoLoadPromises[] = $repository->initializeNonBlocking($this->getLoop());
+            $this->repoInitPromises[] = $repository->initializeNonBlocking($this->getLoop());
         }
         
         parent::addRepository($repository);
@@ -43,23 +42,35 @@ class RepositoryManager extends BlockingRepositoryManager
      */
     public function getRepositories()
     {
-        if (count($this->repoLoadPromises)) {
+        if (count($this->repoInitPromises)) {
+            $exception = null;
+            
             $loop = $this->getLoop();
         
-            $allReposLoadedPromise = When::all($this->repoLoadPromises);
-            $loop->addTimer(0.001, function () use ($loop, $allReposLoadedPromise) {
-                $allReposLoadedPromise->then(
-                    array($loop, 'stop'),
-                    function ($error) use ($loop) {
-                        $loop->stop();
-                        return new RejectedPromise($error);
+            $allReposInitdPromise = When::all($this->repoInitPromises)->then(
+                null,
+                function ($error) use (&$exception) {
+                    if ($error instanceof \Exception) {
+                        $exception = $error;
+                    } elseif (is_string($error)) {
+                        $exception = new \Exception($error);
+                    } else {
+                        $exception = new \Exception('Unable to intialise repositories.');
                     }
-                );
+                }
+            );
+            
+            $loop->addTimer(0.001, function () use ($loop, $allReposInitdPromise) {
+                $allReposInitdPromise->then(array($loop, 'stop'));
             });
             
             $loop->run();
             
-            $this->repoLoadPromises = array();
+            if ($exception) {
+                throw $exception;
+            }
+            
+            $this->repoInitPromises = array();
         }
         
         return parent::getRepositories();

@@ -16,6 +16,7 @@ use Composer\Repository\RepositoryManager as BlockingRepositoryManager;
 use Composer\Repository\RepositoryInterface as BlockingRepositoryInterface;
 use React\EventLoop\Factory as LoopFactory;
 use React\Promise\When;
+use React\Promise\RejectedPromise;
 
 /**
  * @author Josh Di Fabio <joshdifabio@gmail.com>
@@ -47,7 +48,13 @@ class RepositoryManager extends BlockingRepositoryManager
         
             $allReposLoadedPromise = When::all($this->repoLoadPromises);
             $loop->addTimer(0.001, function () use ($loop, $allReposLoadedPromise) {
-                $allReposLoadedPromise->then(array($loop, 'stop'), array($loop, 'stop'));
+                $allReposLoadedPromise->then(
+                    array($loop, 'stop'),
+                    function ($error) use ($loop) {
+                        $loop->stop();
+                        return new RejectedPromise($error);
+                    }
+                );
             });
             
             $loop->run();

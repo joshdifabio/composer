@@ -14,12 +14,10 @@ namespace Composer\NonBlocking\Repository;
 
 use Composer\Repository\VcsRepository as BlockingVcsRepository;
 use Composer\NonBlocking\Repository\Vcs\VcsDriverInterface as NonBlockingDriver;
-use Composer\Repository\Vcs\VcsDriverInterface as BlockingDriver;
 use Composer\EventDispatcher\EventDispatcher;
 use Composer\IO\IOInterface;
 use Composer\Config;
 use React\Promise\FulfilledPromise;
-use React\Promise\RejectedPromise;
 use React\EventLoop\LoopInterface;
 
 /**
@@ -30,6 +28,7 @@ class VcsRepository extends BlockingVcsRepository implements NonBlockingReposito
 {
     private $loadPackagesPromise;
     private $driver;
+    private $isDriverInitd = false;
 
     public function __construct(array $repoConfig, IOInterface $io, Config $config, EventDispatcher $dispatcher = null, array $drivers = null)
     {
@@ -54,22 +53,24 @@ class VcsRepository extends BlockingVcsRepository implements NonBlockingReposito
             
             if ($driver instanceof NonBlockingDriver) {
                 $initPromise = $driver->initializeNonBlocking($eventLoop);
-                $repository = $this;
-                $this->loadPackagesPromise = $initPromise->then(
-                    function () use ($repository, $driver) {
-                        $repository->setDriver($driver);
-                        return $driver;
-                    },
-                    function ($error) {
-                        echo "Failed to load packages:\n$error\n";
-                    }
-                );
-            } elseif ($driver instanceof BlockingDriver) {
-                $driver->initialize();
-                $this->driver = $driver;
-                $this->loadPackagesPromise = new FulfilledPromise;
+                $isDriverInitd = &$this->isDriverInitd;
+                $io = $this->io;
+                $verbose = $this->verbose;
+                $url = $this->url;
+                
+                $this->loadPackagesPromise = $initPromise
+                    ->then(
+                        function () use (&$isDriverInitd) {
+                            $isDriverInitd = true;
+                        },
+                        function ($e) use ($io, $verbose, $url) {
+                            if ($verbose && $e instanceof \Exception) {
+                                $this->io->write('<error>Unable to perform non-blocking init of repository '.$url.', '.$e->getMessage().'</error>');
+                            }
+                        }
+                    );
             } else {
-                $this->loadPackagesPromise = new RejectedPromise;
+                $this->loadPackagesPromise = new FulfilledPromise;
             }
         }
         
@@ -78,21 +79,28 @@ class VcsRepository extends BlockingVcsRepository implements NonBlockingReposito
     
     public function getDriver()
     {
-        if (is_null($this->driver)) {
-            $driver = $this->getDriverInstance();
+        if (!$driver = $this->getDriverInstance()) {
+            return null;
+        }
+        
+        if (!$this->isDriverInitd) {
             $driver->initialize();
-            $this->driver = $driver;
+            $this->isDriverInitd = true;
+        }
+        
+        return $driver;
+    }
+    
+    private function getDriverInstance()
+    {
+        if (is_null($this->driver)) {
+            $this->driver = $this->createDriver();
         }
         
         return $this->driver;
     }
     
-    public function setDriver($driver)
-    {
-        $this->driver = $driver;
-    }
-    
-    private function getDriverInstance()
+    private function createDriver()
     {
         if (isset($this->drivers[$this->type])) {
             $class = $this->drivers[$this->type];

@@ -68,9 +68,11 @@ class Git
             }
             
             $that = $this;
-            return $lastPromise->then(function () use ($that, $commandCallable, $url, $cwd, $initialClone) {
-                $that->doRunCommand($commandCallable, $url, $cwd, $initialClone);
-            });
+            return $lastPromise->then(
+                function () use ($that, $commandCallable, $url, $cwd, $initialClone) {
+                    $that->doRunCommand($commandCallable, $url, $cwd, $initialClone);
+                }
+            );
         } catch (\Exception $e) {
             return new RejectedPromise($e);
         }

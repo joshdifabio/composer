@@ -17,7 +17,7 @@ use React\Promise\FulfilledPromise;
 use React\Promise\RejectedPromise;
 
 /**
- * @author Josh Di Fabio <jd@amp.co>
+ * @author Josh Di Fabio <joshdifabio@gmail.com>
  */
 class InvocationBuffer
 {

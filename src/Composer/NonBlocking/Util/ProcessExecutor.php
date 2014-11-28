@@ -18,7 +18,7 @@ use React\Promise\Deferred;
 use React\Stream\Stream;
 
 /**
- * @author Josh Di Fabio <jd@amp.co>
+ * @author Josh Di Fabio <joshdifabio@gmail.com>
  */
 class ProcessExecutor
 {

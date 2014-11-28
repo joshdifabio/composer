@@ -13,7 +13,7 @@
 namespace Composer\NonBlocking\Util;
 
 /**
- * @author Josh Di Fabio <jd@amp.co>
+ * @author Josh Di Fabio <joshdifabio@gmail.com>
  */
 class ProcessResult
 {

@@ -24,7 +24,7 @@ use Composer\Cache;
 
 /**
  * @author Jordi Boggiano <j.boggiano@seld.be>
- * @author Josh Di Fabio <jd@amp.co>
+ * @author Josh Di Fabio <joshdifabio@gmail.com>
  */
 class GitDriver extends BlockingGitDriver implements VcsDriverInterface
 {

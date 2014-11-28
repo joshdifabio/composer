@@ -24,7 +24,7 @@ use React\Promise\FulfilledPromise;
 use Composer\Downloader\TransportException;
 
 /**
- * @author Josh Di Fabio <jd@amp.co>
+ * @author Josh Di Fabio <joshdifabio@gmail.com>
  */
 class SvnDriver extends BlockingSvnDriver implements VcsDriverInterface
 {

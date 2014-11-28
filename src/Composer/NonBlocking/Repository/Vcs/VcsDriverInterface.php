@@ -16,7 +16,7 @@ use Composer\Repository\Vcs\VcsDriverInterface as BlockingVcsDriverInterface;
 use React\EventLoop\LoopInterface;
 
 /**
- * @author Josh Di Fabio <jd@amp.co>
+ * @author Josh Di Fabio <joshdifabio@gmail.com>
  */
 interface VcsDriverInterface extends BlockingVcsDriverInterface
 {

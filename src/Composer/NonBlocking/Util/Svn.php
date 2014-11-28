@@ -17,7 +17,7 @@ use Composer\Config;
 use Composer\IO\IOInterface;
 
 /**
- * @author Josh Di Fabio <jd@amp.co>
+ * @author Josh Di Fabio <joshdifabio@gmail.com>
  */
 class Svn extends BlockingSvnUtil
 {

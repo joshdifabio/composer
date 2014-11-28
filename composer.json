@@ -1,5 +1,5 @@
 {
-    "name": "joshdifabio/composer",
+    "name": "composer/composer",
     "description": "Composer helps you declare, manage and install dependencies of PHP projects, ensuring you have the right stack everywhere.",
     "keywords": ["package", "dependency", "autoload"],
     "homepage": "http://getcomposer.org/",
@@ -20,9 +20,6 @@
     "support": {
         "irc": "irc://irc.freenode.org/composer",
         "issues": "https://github.com/composer/composer/issues"
-    },
-    "replace": {
-        "composer/composer": "self.version"
     },
     "require": {
         "php": ">=5.3.2",

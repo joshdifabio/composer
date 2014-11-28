@@ -177,10 +177,12 @@ class Git
                 $url = $protocol ."://" . $domain . "/" . $repo;
             }
             
+            $nonBlockingProcess = $this->nonBlockingProcess;
             $lastPromise->then(null, function () use (
                 &$messages,
                 $commandCallable,
                 $url,
+                $nonBlockingProcess,
                 $cwd,
                 $initialClone,
                 $origCwd,
@@ -188,7 +190,7 @@ class Git
             ) {
                 $command = call_user_func($commandCallable, $url);
                 
-                return $this->nonBlockingProcess->execute($command, $cwd)->then(
+                return $nonBlockingProcess->execute($command, $cwd)->then(
                     function (ProcessResult $result) use (&$messages, $initialClone, $filesystem, $origCwd) {
                         if (0 === $result->getExitCode()) {
                             return;

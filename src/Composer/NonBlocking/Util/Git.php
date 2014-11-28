@@ -49,31 +49,40 @@ class Git
     public function runCommand($commandCallable, $url, $cwd, $initialClone = false)
     {
         try {
-            return $this->doRunCommand($commandCallable, $url, $cwd, $initialClone);
+            if (preg_match('{^ssh://[^@]+@[^:]+:[^0-9]+}', $url)) {
+                throw new \InvalidArgumentException('The source URL '.$url.' is invalid, ssh URLs should have a port number after ":".'."\n".'Use ssh://git@example.com:22/path or just git@example.com:path if you do not want to provide a password or custom port.');
+            }
+            
+            if (!$initialClone) {
+                // capture username/password from URL if there is one
+                $io = $this->io;
+                $lastPromise = $this->nonBlockingProcess->execute('git remote -v', $cwd)->then(
+                    function (ProcessResult $result) use ($io) {
+                        if (preg_match('{^(?:composer|origin)\s+https?://(.+):(.+)@([^/]+)}im', $result->getStdOut(), $match)) {
+                            $io->setAuthentication($match[3], urldecode($match[1]), urldecode($match[2]));
+                        }
+                    }
+                );
+            } else {
+                $lastPromise = new FulfilledPromise;
+            }
+            
+            $that = $this;
+            return $lastPromise->then(function () use ($that, $commandCallable, $url, $cwd, $initialClone) {
+                $that->doRunCommand($commandCallable, $url, $cwd, $initialClone);
+            });
         } catch (\Exception $e) {
             return new RejectedPromise($e);
         }
     }
 
-    private function doRunCommand($commandCallable, $url, $cwd, $initialClone)
+    public function doRunCommand($commandCallable, $url, $cwd, $initialClone)
     {
         if ($initialClone) {
             $origCwd = $cwd;
             $cwd = null;
         } else {
             $origCwd = null;
-        }
-
-        if (preg_match('{^ssh://[^@]+@[^:]+:[^0-9]+}', $url)) {
-            throw new \InvalidArgumentException('The source URL '.$url.' is invalid, ssh URLs should have a port number after ":".'."\n".'Use ssh://git@example.com:22/path or just git@example.com:path if you do not want to provide a password or custom port.');
-        }
-
-        if (!$initialClone) {
-            // capture username/password from URL if there is one
-            $this->blockingProcess->execute('git remote -v', $output, $cwd);
-            if (preg_match('{^(?:composer|origin)\s+https?://(.+):(.+)@([^/]+)}im', $output, $match)) {
-                $this->io->setAuthentication($match[3], urldecode($match[1]), urldecode($match[2]));
-            }
         }
 
         // public github, autoswitch protocols
@@ -147,7 +156,7 @@ class Git
         );
     }
     
-    private function executeGithubCommand($commandCallable, $cwd, $origCwd, $initialClone, $domain, $repo)
+    public function executeGithubCommand($commandCallable, $cwd, $origCwd, $initialClone, $domain, $repo)
     {
         $protocols = $this->config->get('github-protocols');
         

@@ -65,7 +65,7 @@ class VcsRepository extends BlockingVcsRepository implements NonBlockingReposito
                         },
                         function ($e) use ($io, $verbose, $url) {
                             if ($verbose && $e instanceof \Exception) {
-                                $this->io->write('<error>Unable to perform non-blocking init of repository '.$url.', '.$e->getMessage().'</error>');
+                                $io->write('<error>Unable to perform non-blocking init of repository '.$url.', '.$e->getMessage().'</error>');
                             }
                         }
                     );

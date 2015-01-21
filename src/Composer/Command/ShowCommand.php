@@ -41,6 +41,7 @@ class ShowCommand extends Command
     {
         $this
             ->setName('show')
+            ->setAliases(array('info'))
             ->setDescription('Show information about packages')
             ->setDefinition(array(
                 new InputArgument('package', InputArgument::OPTIONAL, 'Package to inspect'),
@@ -293,6 +294,16 @@ EOT
         $output->writeln('<info>source</info>   : ' . sprintf('[%s] <comment>%s</comment> %s', $package->getSourceType(), $package->getSourceUrl(), $package->getSourceReference()));
         $output->writeln('<info>dist</info>     : ' . sprintf('[%s] <comment>%s</comment> %s', $package->getDistType(), $package->getDistUrl(), $package->getDistReference()));
         $output->writeln('<info>names</info>    : ' . implode(', ', $package->getNames()));
+
+        if ($package->isAbandoned()) {
+            $replacement = ($package->getReplacementPackage() !== null)
+                ? ' The author suggests using the ' . $package->getReplacementPackage(). ' package instead.'
+                : null;
+
+            $output->writeln(
+                sprintf('<error>Attention: This package is abandoned and no longer maintained.%s</error>', $replacement)
+            );
+        }
 
         if ($package->getSupport()) {
             $output->writeln("\n<info>support</info>");

@@ -26,7 +26,6 @@ class RemoteFilesystem
 {
     private $io;
     private $config;
-    private $firstCall;
     private $bytesMax;
     private $originUrl;
     private $fileUrl;
@@ -344,7 +343,7 @@ class RemoteFilesystem
     {
         if ($this->config && in_array($this->originUrl, $this->config->get('github-domains'), true)) {
             $message = "\n".'Could not fetch '.$this->fileUrl.', enter your GitHub credentials '.($httpStatus === 404 ? 'to access private repos' : 'to go over the API rate limit');
-            $gitHubUtil = new GitHub($this->io, $this->config, null, $this);
+            $gitHubUtil = new GitHub($this->io, $this->config, null);
             if (!$gitHubUtil->authorizeOAuth($this->originUrl)
                 && (!$this->io->isInteractive() || !$gitHubUtil->authorizeOAuthInteractively($this->originUrl, $message))
             ) {
@@ -385,15 +384,19 @@ class RemoteFilesystem
 
     protected function getOptionsForUrl($originUrl, $additionalOptions)
     {
+        if (defined('HHVM_VERSION')) {
+            $phpVersion = 'HHVM ' . HHVM_VERSION;
+        } else {
+            $phpVersion = 'PHP ' . PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . '.' . PHP_RELEASE_VERSION;
+        }
+
         $headers = array(
             sprintf(
-                'User-Agent: Composer/%s (%s; %s; PHP %s.%s.%s)',
+                'User-Agent: Composer/%s (%s; %s; %s)',
                 Composer::VERSION === '@package_version@' ? 'source' : Composer::VERSION,
                 php_uname('s'),
                 php_uname('r'),
-                PHP_MAJOR_VERSION,
-                PHP_MINOR_VERSION,
-                PHP_RELEASE_VERSION
+                $phpVersion
             )
         );
 

@@ -31,6 +31,7 @@ use Composer\Installer\NoopInstaller;
 use Composer\IO\IOInterface;
 use Composer\Json\JsonFile;
 use Composer\Package\AliasPackage;
+use Composer\Package\CompletePackage;
 use Composer\Package\Link;
 use Composer\Package\LinkConstraint\VersionConstraint;
 use Composer\Package\Locker;
@@ -104,8 +105,11 @@ class Installer
     protected $dryRun = false;
     protected $verbose = false;
     protected $update = false;
+    protected $dumpAutoloader = true;
     protected $runScripts = true;
     protected $ignorePlatformReqs = false;
+    protected $preferStable = false;
+    protected $preferLowest = false;
     /**
      * Array of package names/globs flagged for update
      *
@@ -159,6 +163,9 @@ class Installer
      */
     public function run()
     {
+        gc_collect_cycles();
+        gc_disable();
+
         if ($this->dryRun) {
             $this->verbose = true;
             $this->runScripts = false;
@@ -240,6 +247,25 @@ class Installer
             }
         }
 
+        # Find abandoned packages and warn user
+        foreach ($localRepo->getPackages() as $package) {
+            if (!$package instanceof CompletePackage || !$package->isAbandoned()) {
+                continue;
+            }
+
+            $replacement = (is_string($package->getReplacementPackage()))
+                ? 'Use ' . $package->getReplacementPackage() . ' instead'
+                : 'No replacement was suggested';
+
+            $this->io->write(
+                sprintf(
+                    "<error>Package %s is abandoned, you should avoid using it. %s.</error>",
+                    $package->getPrettyName(),
+                    $replacement
+                )
+            );
+        }
+
         if (!$this->dryRun) {
             // write lock
             if ($this->update || !$this->locker->isLocked()) {
@@ -284,22 +310,25 @@ class Installer
                     $aliases,
                     $this->package->getMinimumStability(),
                     $this->package->getStabilityFlags(),
-                    $this->package->getPreferStable()
+                    $this->preferStable || $this->package->getPreferStable(),
+                    $this->preferLowest
                 );
                 if ($updatedLock) {
                     $this->io->write('<info>Writing lock file</info>');
                 }
             }
 
-            // write autoloader
-            if ($this->optimizeAutoloader) {
-                $this->io->write('<info>Generating optimized autoload files</info>');
-            } else {
-                $this->io->write('<info>Generating autoload files</info>');
-            }
+            if ($this->dumpAutoloader) {
+                // write autoloader
+                if ($this->optimizeAutoloader) {
+                    $this->io->write('<info>Generating optimized autoload files</info>');
+                } else {
+                    $this->io->write('<info>Generating autoload files</info>');
+                }
 
-            $this->autoloadGenerator->setDevMode($this->devMode);
-            $this->autoloadGenerator->dump($this->config, $localRepo, $this->package, $this->installationManager, 'composer', $this->optimizeAutoloader);
+                $this->autoloadGenerator->setDevMode($this->devMode);
+                $this->autoloadGenerator->dump($this->config, $localRepo, $this->package, $this->installationManager, 'composer', $this->optimizeAutoloader);
+            }
 
             if ($this->runScripts) {
                 // dispatch post event
@@ -554,11 +583,11 @@ class Installer
                 if ($reason instanceof Rule) {
                     switch ($reason->getReason()) {
                         case Rule::RULE_JOB_INSTALL:
-                            $this->io->write('    REASON: Required by root: '.$reason->getPrettyString());
+                            $this->io->write('    REASON: Required by root: '.$reason->getPrettyString($pool));
                             $this->io->write('');
                             break;
                         case Rule::RULE_PACKAGE_REQUIRES:
-                            $this->io->write('    REASON: '.$reason->getPrettyString());
+                            $this->io->write('    REASON: '.$reason->getPrettyString($pool));
                             $this->io->write('');
                             break;
                     }
@@ -671,16 +700,21 @@ class Installer
     private function createPolicy()
     {
         $preferStable = null;
+        $preferLowest = null;
         if (!$this->update && $this->locker->isLocked()) {
             $preferStable = $this->locker->getPreferStable();
+            $preferLowest = $this->locker->getPreferLowest();
         }
-        // old lock file without prefer stable will return null
+        // old lock file without prefer stable/lowest will return null
         // so in this case we use the composer.json info
         if (null === $preferStable) {
-            $preferStable = $this->package->getPreferStable();
+            $preferStable = $this->preferStable || $this->package->getPreferStable();
+        }
+        if (null === $preferLowest) {
+            $preferLowest = $this->preferLowest;
         }
 
-        return new DefaultPolicy($preferStable);
+        return new DefaultPolicy($preferStable, $preferLowest);
     }
 
     private function createRequest(Pool $pool, RootPackageInterface $rootPackage, PlatformRepository $platformRepo)
@@ -1132,6 +1166,21 @@ class Installer
         return $this;
     }
 
+
+    /**
+     * set whether to run autoloader or not
+     *
+     * @param boolean $dumpAutoloader
+     * @return Installer
+     */
+    public function setDumpAutoloader($dumpAutoloader = true)
+    {
+        $this->dumpAutoloader = (boolean) $dumpAutoloader;
+
+        return $this;
+    }
+
+
     /**
      * set whether to run scripts or not
      *
@@ -1217,6 +1266,32 @@ class Installer
     public function setWhitelistDependencies($updateDependencies = true)
     {
         $this->whitelistDependencies = (boolean) $updateDependencies;
+
+        return $this;
+    }
+
+    /**
+     * Should packages be prefered in a stable version when updating?
+     *
+     * @param  boolean   $preferStable
+     * @return Installer
+     */
+    public function setPreferStable($preferStable = true)
+    {
+        $this->preferStable = (boolean) $preferStable;
+
+        return $this;
+    }
+
+    /**
+     * Should packages be prefered in a lowest version when updating?
+     *
+     * @param  boolean   $preferLowest
+     * @return Installer
+     */
+    public function setPreferLowest($preferLowest = true)
+    {
+        $this->preferLowest = (boolean) $preferLowest;
 
         return $this;
     }

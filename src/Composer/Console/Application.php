@@ -94,9 +94,18 @@ class Application extends BaseApplication
             $output->writeln('<warning>Composer only officially supports PHP 5.3.2 and above, you will most likely encounter problems with your PHP '.PHP_VERSION.', upgrading is strongly recommended.</warning>');
         }
 
-        if (defined('COMPOSER_DEV_WARNING_TIME') && $this->getCommandName($input) !== 'self-update' && $this->getCommandName($input) !== 'selfupdate') {
-            if (time() > COMPOSER_DEV_WARNING_TIME) {
-                $output->writeln(sprintf('<warning>Warning: This development build of composer is over 30 days old. It is recommended to update it by running "%s self-update" to get the latest version.</warning>', $_SERVER['PHP_SELF']));
+        if (defined('COMPOSER_DEV_WARNING_TIME')) {
+            $commandName = '';
+            if ($name = $this->getCommandName($input)) {
+                try {
+                    $commandName = $this->find($name)->getName();
+                } catch (\InvalidArgumentException $e) {
+                }
+            }
+            if ($commandName !== 'self-update' && $commandName !== 'selfupdate') {
+                if (time() > COMPOSER_DEV_WARNING_TIME) {
+                    $output->writeln(sprintf('<warning>Warning: This development build of composer is over 30 days old. It is recommended to update it by running "%s self-update" to get the latest version.</warning>', $_SERVER['PHP_SELF']));
+                }
             }
         }
 
@@ -168,18 +177,29 @@ class Application extends BaseApplication
     public function renderException($exception, $output)
     {
         try {
-            $composer = $this->getComposer(false);
+            $composer = $this->getComposer(false, true);
             if ($composer) {
                 $config = $composer->getConfig();
 
                 $minSpaceFree = 1024*1024;
                 if ((($df = @disk_free_space($dir = $config->get('home'))) !== false && $df < $minSpaceFree)
                     || (($df = @disk_free_space($dir = $config->get('vendor-dir'))) !== false && $df < $minSpaceFree)
+                    || (($df = @disk_free_space($dir = sys_get_temp_dir())) !== false && $df < $minSpaceFree)
                 ) {
                     $output->writeln('<error>The disk hosting '.$dir.' is full, this may be the cause of the following exception</error>');
                 }
             }
         } catch (\Exception $e) {
+        }
+
+        if (defined('PHP_WINDOWS_VERSION_BUILD') && false !== strpos($exception->getMessage(), 'The system cannot find the path specified')) {
+            $output->writeln('<error>The following exception may be caused by a stale entry in your cmd.exe AutoRun</error>');
+            $output->writeln('<error>Check https://getcomposer.org/doc/articles/troubleshooting.md#-the-system-cannot-find-the-path-specified-windows- for details</error>');
+        }
+
+        if (false !== strpos($exception->getMessage(), 'fork failed - Cannot allocate memory')) {
+            $output->writeln('<error>The following exception is caused by a lack of memory and not having swap configured</error>');
+            $output->writeln('<error>Check https://getcomposer.org/doc/articles/troubleshooting.md#proc-open-fork-failed-errors for details</error>');
         }
 
         return parent::renderException($exception, $output);
@@ -209,6 +229,14 @@ class Application extends BaseApplication
         }
 
         return $this->composer;
+    }
+
+    /**
+     * Removes the cached composer instance
+     */
+    public function resetComposer()
+    {
+        $this->composer = null;
     }
 
     /**

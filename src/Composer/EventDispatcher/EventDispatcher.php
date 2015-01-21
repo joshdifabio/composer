@@ -44,6 +44,7 @@ class EventDispatcher
     protected $io;
     protected $loader;
     protected $process;
+    protected $listeners;
 
     /**
      * Constructor.
@@ -155,6 +156,7 @@ class EventDispatcher
         $return = 0;
         foreach ($listeners as $callable) {
             if (!is_string($callable) && is_callable($callable)) {
+                $event = $this->checkListenerExpectedEvent($callable, $event);
                 $return = false === call_user_func($callable, $event) ? 1 : 0;
             } elseif ($this->isPhpScript($callable)) {
                 $className = substr($callable, 0, strpos($callable, '::'));
@@ -179,7 +181,7 @@ class EventDispatcher
             } else {
                 $args = implode(' ', array_map(array('Composer\Util\ProcessExecutor','escape'), $event->getArguments()));
                 if (0 !== ($exitCode = $this->process->execute($callable . ($args === '' ? '' : ' '.$args)))) {
-                    $event->getIO()->write(sprintf('<error>Script %s handling the %s event returned with an error</error>', $callable, $event->getName()));
+                    $this->io->write(sprintf('<error>Script %s handling the %s event returned with an error</error>', $callable, $event->getName()));
 
                     throw new \RuntimeException('Error Output: '.$this->process->getErrorOutput(), $exitCode);
                 }
@@ -200,7 +202,41 @@ class EventDispatcher
      */
     protected function executeEventPhpScript($className, $methodName, Event $event)
     {
+        $event = $this->checkListenerExpectedEvent(array($className, $methodName), $event);
+
         return $className::$methodName($event);
+    }
+
+    /**
+     * @param mixed $target
+     * @param Event $event
+     * @return Event|CommandEvent
+     */
+    protected function checkListenerExpectedEvent($target, Event $event)
+    {
+        if (!$event instanceof Script\Event) {
+            return $event;
+        }
+
+        try {
+            $reflected = new \ReflectionParameter($target, 0);
+        } catch (\Exception $e) {
+            return $event;
+        }
+
+        $typehint = $reflected->getClass();
+
+        if (!$typehint instanceof \ReflectionClass) {
+            return $event;
+        }
+
+        $expected = $typehint->getName();
+
+        if (!$event instanceof $expected && $expected === 'Composer\Script\CommandEvent') {
+            $event = new CommandEvent($event->getName(), $event->getComposer(), $event->getIO(), $event->isDevMode(), $event->getArguments());
+        }
+
+        return $event;
     }
 
     /**

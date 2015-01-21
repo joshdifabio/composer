@@ -217,6 +217,8 @@ class InstallerTest extends TestCase
                 ->setDryRun($input->getOption('dry-run'))
                 ->setUpdateWhitelist($input->getArgument('packages'))
                 ->setWhitelistDependencies($input->getOption('with-dependencies'))
+                ->setPreferStable($input->getOption('prefer-stable'))
+                ->setPreferLowest($input->getOption('prefer-lowest'))
                 ->setIgnorePlatformRequirements($input->getOption('ignore-platform-reqs'));
 
             return $installer->run();
@@ -283,6 +285,22 @@ class InstallerTest extends TestCase
                     $message = $match['test'];
                     $condition = !empty($match['condition']) ? $match['condition'] : null;
                     $composer = JsonFile::parseJson($match['composer']);
+
+                    if (isset($composer['repositories'])) {
+                        foreach ($composer['repositories'] as &$repo) {
+                            if ($repo['type'] !== 'composer') {
+                                continue;
+                            }
+
+                            // Change paths like file://foobar to file:///path/to/fixtures
+                            if (preg_match('{^file://[^/]}', $repo['url'])) {
+                                $repo['url'] = 'file://' . strtr($fixturesDir, '\\', '/') . '/' . substr($repo['url'], 7);
+                            }
+
+                            unset($repo);
+                        }
+                    }
+
                     if (!empty($match['lock'])) {
                         $lock = JsonFile::parseJson($match['lock']);
                         if (!isset($lock['hash'])) {
@@ -306,7 +324,7 @@ class InstallerTest extends TestCase
                 die(sprintf('Test "%s" is not valid, did not match the expected format.', str_replace($fixturesDir.'/', '', $file)));
             }
 
-            $tests[] = array(str_replace($fixturesDir.'/', '', $file), $message, $condition, $composer, $lock, $installed, $run, $expectLock, $expectOutput, $expect, $expectExitCode);
+            $tests[basename($file)] = array(str_replace($fixturesDir.'/', '', $file), $message, $condition, $composer, $lock, $installed, $run, $expectLock, $expectOutput, $expect, $expectExitCode);
         }
 
         return $tests;

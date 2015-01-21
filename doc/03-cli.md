@@ -88,6 +88,7 @@ resolution.
   installation and show you what would happen.
 * **--dev:** Install packages listed in `require-dev` (this is the default behavior).
 * **--no-dev:** Skip installing packages listed in `require-dev`.
+* **--no-autoloader:** Skips autoloader generation.
 * **--no-scripts:** Skips execution of scripts defined in `composer.json`.
 * **--no-plugins:** Disables plugins.
 * **--no-progress:** Removes the progress display that can mess with some
@@ -130,6 +131,7 @@ php composer.phar update vendor/*
 * **--dry-run:** Simulate the command without actually doing anything.
 * **--dev:** Install packages listed in `require-dev` (this is the default behavior).
 * **--no-dev:** Skip installing packages listed in `require-dev`.
+* **--no-autoloader:** Skips autoloader generation.
 * **--no-scripts:** Skips execution of scripts defined in `composer.json`.
 * **--no-plugins:** Disables plugins.
 * **--no-progress:** Removes the progress display that can mess with some
@@ -140,7 +142,9 @@ php composer.phar update vendor/*
 * **--lock:** Only updates the lock file hash to suppress warning about the
   lock file being out of date.
 * **--with-dependencies** Add also all dependencies of whitelisted packages to the whitelist.
-  So all packages with their dependencies are updated recursively.
+* **--prefer-stable:** Prefer stable versions of dependencies.
+* **--prefer-lowest:** Prefer lowest versions of dependencies. Useful for testing minimal
+  versions of requirements, generally used with `--prefer-stable`.
 
 ## require
 
@@ -165,6 +169,9 @@ php composer.phar require vendor/package:2.* vendor/package2:dev-master
 
 * **--prefer-source:** Install packages from `source` when available.
 * **--prefer-dist:** Install packages from `dist` when available.
+* **--ignore-platform-reqs:** ignore `php`, `hhvm`, `lib-*` and `ext-*`
+  requirements and force the installation even if the local machine does not
+  fulfill these.
 * **--dev:** Add packages to `require-dev`.
 * **--no-update:** Disables the automatic update of the dependencies.
 * **--no-progress:** Removes the progress display that can mess with some
@@ -186,6 +193,9 @@ After removing the requirements, the modified requirements will be
 uninstalled.
 
 ### Options
+* **--ignore-platform-reqs:** ignore `php`, `hhvm`, `lib-*` and `ext-*`
+  requirements and force the installation even if the local machine does not
+  fulfill these.
 * **--dev:** Remove packages from `require-dev`.
 * **--no-update:** Disables the automatic update of the dependencies.
 * **--no-progress:** Removes the progress display that can mess with some
@@ -316,7 +326,7 @@ php composer.phar validate
 
 ### Options
 
-* **--no-check-all:** Wether or not composer do a complete validation.
+* **--no-check-all:** Whether or not composer do a complete validation.
 
 ## status
 
@@ -389,16 +399,18 @@ options.
 ### Options
 
 * **--global (-g):** Operate on the global config file located at
-`$COMPOSER_HOME/config.json` by default.  Without this option, this command
-affects the local composer.json file or a file specified by `--file`.
+  `$COMPOSER_HOME/config.json` by default.  Without this option, this command
+  affects the local composer.json file or a file specified by `--file`.
 * **--editor (-e):** Open the local composer.json file using in a text editor as
-defined by the `EDITOR` env variable.  With the `--global` option, this opens
-the global config file.
+  defined by the `EDITOR` env variable.  With the `--global` option, this opens
+  the global config file.
 * **--unset:** Remove the configuration element named by `setting-key`.
 * **--list (-l):** Show the list of current config variables.  With the `--global`
- option this lists the global configuration only.
+  option this lists the global configuration only.
 * **--file="..." (-f):** Operate on a specific file instead of composer.json. Note
- that this cannot be used in conjunction with the `--global` option.
+  that this cannot be used in conjunction with the `--global` option.
+* **--absolute:** Returns absolute paths when fetching *-dir config values
+  instead of relative.
 
 ### Modifying Repositories
 
@@ -455,6 +467,9 @@ By default the command checks for the packages on packagist.org.
 * **--keep-vcs:** Skip the deletion of the VCS metadata for the created
   project. This is mostly useful if you run the command in non-interactive
   mode.
+* **--ignore-platform-reqs:** ignore `php`, `hhvm`, `lib-*` and `ext-*`
+  requirements and force the installation even if the local machine does not
+  fulfill these.
 
 ## dump-autoload
 
@@ -476,10 +491,19 @@ performance.
   a bit of time to run so it is currently not done by default.
 * **--no-dev:** Disables autoload-dev rules.
 
+## clear-cache
+
+Deletes all content from Composer's cache directories.
+
 ## licenses
 
 Lists the name, version and license of every package installed. Use
 `--format=json` to get machine readable output.
+
+### Options
+
+* **--no-dev:** Remove dev dependencies from the output
+* **--format:** Format of the output: text or json (default: "text")
 
 ## run-script
 

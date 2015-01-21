@@ -195,6 +195,10 @@ class ArrayLoader implements LoaderInterface
             if (isset($config['support'])) {
                 $package->setSupport($config['support']);
             }
+
+            if (isset($config['abandoned'])) {
+                $package->setAbandoned($config['abandoned']);
+            }
         }
 
         if ($aliasNormalized = $this->getBranchAlias($config)) {
@@ -220,7 +224,7 @@ class ArrayLoader implements LoaderInterface
      */
     public function getBranchAlias(array $config)
     {
-        if ('dev-' !== substr($config['version'], 0, 4)
+        if (('dev-' !== substr($config['version'], 0, 4) && '-dev' !== substr($config['version'], -4))
             || !isset($config['extra']['branch-alias'])
             || !is_array($config['extra']['branch-alias'])
         ) {
@@ -241,6 +245,14 @@ class ArrayLoader implements LoaderInterface
 
             // ensure that it is the current branch aliasing itself
             if (strtolower($config['version']) !== strtolower($sourceBranch)) {
+                continue;
+            }
+
+            // If using numeric aliases ensure the alias is a valid subversion
+            if(($sourcePrefix = $this->versionParser->parseNumericAliasPrefix($sourceBranch))
+                && ($targetPrefix = $this->versionParser->parseNumericAliasPrefix($targetBranch))
+                && (stripos($targetPrefix, $sourcePrefix) !== 0)
+            ) {
                 continue;
             }
 

@@ -98,7 +98,10 @@ class VersionSelectorTest extends \PHPUnit_Framework_TestCase
             array('v1.2.1', false, 'stable', '~1.2'),
             array('3.1.2-pl2', false, 'stable', '~3.1'),
             array('3.1.2-patch', false, 'stable', '~3.1'),
-            // for non-stable versions, we add ~, but don't try the (1.2.1 -> 1.2) transformation
+            array('0.1.0', false, 'stable', '0.1.*'),
+            array('0.1.3', false, 'stable', '0.1.*'),
+            array('0.0.3', false, 'stable', '0.0.3.*'),
+            array('0.0.3-alpha', false, 'alpha', '0.0.3.*@alpha'),
             array('2.0-beta.1', false, 'beta', '~2.0@beta'),
             array('3.1.2-alpha5', false, 'alpha', '~3.1@alpha'),
             array('3.0-RC2', false, 'RC', '~3.0@RC'),
@@ -110,8 +113,12 @@ class VersionSelectorTest extends \PHPUnit_Framework_TestCase
             array('3.1.2-dev', true, 'dev', '3.1.2-dev'),
             // dev packages with alias inherit the alias
             array('dev-master', true, 'dev', '~2.1@dev', '2.1.x-dev'),
+            array('dev-master', true, 'dev', '~2.1@dev', '2.1-dev'),
             array('dev-master', true, 'dev', '~2.1@dev', '2.1.3.x-dev'),
             array('dev-master', true, 'dev', '~2.0@dev', '2.x-dev'),
+            // numeric alias
+            array('3.x-dev', true, 'dev', '~3.0@dev', '3.0.x-dev'),
+            array('3.x-dev', true, 'dev', '~3.0@dev', '3.0-dev'),
         );
     }
 

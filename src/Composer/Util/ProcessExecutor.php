@@ -15,6 +15,7 @@ namespace Composer\Util;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Process\ProcessUtils;
 use Composer\IO\IOInterface;
+use FutureProcess\Shell;
 
 /**
  * @author Robert Schönthal <seroscho@googlemail.com>
@@ -22,6 +23,11 @@ use Composer\IO\IOInterface;
 class ProcessExecutor
 {
     protected static $timeout = 300;
+    
+    /**
+     * Property is private because it's likely to be removed eventually
+     */
+    private static $shell;
 
     protected $captureOutput;
     protected $errorOutput;
@@ -94,6 +100,17 @@ class ProcessExecutor
         }
 
         echo $buffer;
+    }
+    
+    public static function getShell()
+    {
+        if (!self::$shell) {
+            $shell = new Shell;
+            $shell->setProcessLimit(100);
+            self::$shell = $shell;
+        }
+        
+        return self::$shell;
     }
 
     public static function getTimeout()

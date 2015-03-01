@@ -14,6 +14,8 @@ namespace Composer\Util;
 
 use Composer\Config;
 use Composer\IO\IOInterface;
+use FutureSVN\Shell\Shell;
+use FutureSVN\Repository\Repository;
 
 /**
  * @author Till Klampaeckel <till@php.net>
@@ -23,6 +25,8 @@ class Svn
 {
     const MAX_QTY_AUTH_TRIES = 5;
 
+    private static $shell;
+    
     /**
      * @var array
      */
@@ -62,6 +66,11 @@ class Svn
      * @var \Composer\Config
      */
     protected $config;
+    
+    /**
+     * @var Repository
+     */
+    protected $repository;
 
     /**
      * @param string                   $url
@@ -135,6 +144,10 @@ class Svn
             $this->doAuthDance();
         }
 
+        if ($this->repository) {
+            $this->applyConfigToRepo();
+        }
+
         // try to authenticate if maximum quantity of tries not reached
         if ($this->qtyAuthTries++ < self::MAX_QTY_AUTH_TRIES) {
             // restart the process
@@ -152,6 +165,37 @@ class Svn
     public function setCacheCredentials($cacheCredentials)
     {
         $this->cacheCredentials = $cacheCredentials;
+    }
+    
+    public static function getShell()
+    {
+        if (!self::$shell) {
+            self::$shell = new Shell(ProcessExecutor::getShell());
+        }
+        
+        return self::$shell;
+    }
+    
+    public function getRepository()
+    {
+        if (!$this->repository) {
+            $this->repository = new Repository(self::getShell(), $this->url);
+            $this->hasAuth();
+            $this->applyConfigToRepo();
+        }
+        
+        return $this->repository;
+    }
+    
+    private function applyConfigToRepo()
+    {
+        $this->repository->setUsername($this->credentials['username']);
+        $this->repository->setPassword($this->credentials['password']);
+        if ($this->cacheCredentials) {
+            $this->repository->enableAuthCache();
+        } else {
+            $this->repository->disableAuthCache();
+        }
     }
 
     /**
@@ -176,7 +220,7 @@ class Svn
         $this->credentials['password'] = $this->io->askAndHideAnswer("Password: ");
 
         $this->cacheCredentials = $this->io->askConfirmation("Should Subversion cache these credentials? (yes/no) ", true);
-
+        
         return $this;
     }
 

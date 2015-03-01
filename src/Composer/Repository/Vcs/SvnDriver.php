@@ -20,10 +20,13 @@ use Composer\Util\Filesystem;
 use Composer\Util\Svn as SvnUtil;
 use Composer\IO\IOInterface;
 use Composer\Downloader\TransportException;
+use FutureSVN\FutureCommit;
+use FutureSVN\Repository\FutureNodeCollection;
 
 /**
  * @author Jordi Boggiano <j.boggiano@seld.be>
  * @author Till Klampaeckel <till@php.net>
+ * @author Josh Di Fabio <joshdifabio@gmail.com>
  */
 class SvnDriver extends VcsDriver
 {
@@ -47,6 +50,12 @@ class SvnDriver extends VcsDriver
      * @var \Composer\Util\Svn
      */
     private $util;
+    private $repository;
+    private $lastCommitToTrunk;
+    private $branchDirs;
+    private $tagDirs;
+    private $lastCommitTimes = array();
+    private $composerFileContents = array();
 
     /**
      * {@inheritDoc}
@@ -78,9 +87,14 @@ class SvnDriver extends VcsDriver
         }
 
         $this->cache = new Cache($this->io, $this->config->get('cache-repo-dir').'/'.preg_replace('{[^a-z0-9.]}i', '-', $this->baseUrl));
-
-        $this->getBranches();
-        $this->getTags();
+        
+        $this->util = new SvnUtil($this->baseUrl, $this->io, $this->config, $this->process);
+        $this->util->setCacheCredentials($this->cacheCredentials);
+        $this->repository = $this->util->getRepository();
+        
+        $this->getLastCommitToTrunk();
+        $this->getBranchDirs();
+        $this->getTagDirs();
     }
 
     /**
@@ -88,6 +102,8 @@ class SvnDriver extends VcsDriver
      */
     public function getRootIdentifier()
     {
+        $this->getLastCommitToTrunk()->wait();
+        
         return $this->rootIdentifier ?: $this->trunkPath;
     }
 
@@ -114,31 +130,54 @@ class SvnDriver extends VcsDriver
     {
         return null;
     }
+    
+    public function downloadComposerFile($identifier)
+    {
+        $identifier = '/' . trim($identifier, '/') . '/';
+
+        if (!$this->cache->read($identifier.'.json') && !isset($this->infoCache[$identifier])) {
+            if (!isset($this->composerFileContents[$identifier])) {
+                preg_match('{^(.+?)(@\d+)?/$}', $identifier, $match);
+                if (!empty($match[2])) {
+                    $path = $match[1];
+                    $rev = $match[2];
+                } else {
+                    $path = $identifier;
+                    $rev = null;
+                }
+
+                $resource = $path . 'composer.json';
+                $this->composerFileContents[$identifier] = $this->repository->getFile($resource, $rev)
+                    ->getContents();
+            }
+        
+            return $this->composerFileContents[$identifier];
+        }
+    }
 
     /**
      * {@inheritDoc}
      */
     public function getComposerInformation($identifier)
     {
-        $identifier = '/' . trim($identifier, '/') . '/';
+        $normalizedId = '/' . trim($identifier, '/') . '/';
 
-        if ($res = $this->cache->read($identifier.'.json')) {
-            $this->infoCache[$identifier] = JsonFile::parseJson($res);
+        if ($res = $this->cache->read($normalizedId.'.json')) {
+            $this->infoCache[$normalizedId] = JsonFile::parseJson($res);
         }
 
-        if (!isset($this->infoCache[$identifier])) {
-            preg_match('{^(.+?)(@\d+)?/$}', $identifier, $match);
+        if (!isset($this->infoCache[$normalizedId])) {
+            preg_match('{^(.+?)(@\d+)?/$}', $normalizedId, $match);
             if (!empty($match[2])) {
                 $path = $match[1];
                 $rev = $match[2];
             } else {
-                $path = $identifier;
+                $path = $normalizedId;
                 $rev = '';
             }
 
             try {
-                $resource = $path.'composer.json';
-                $output = $this->execute('svn cat', $this->baseUrl . $resource . $rev);
+                $output = $this->downloadComposerFile($identifier)->getStreamContents();
                 if (!trim($output)) {
                     return;
                 }
@@ -146,24 +185,27 @@ class SvnDriver extends VcsDriver
                 throw new TransportException($e->getMessage());
             }
 
-            $composer = JsonFile::parseJson($output, $this->baseUrl . $resource . $rev);
+            $composer = JsonFile::parseJson($output, $this->baseUrl . $path.'composer.json' . $rev);
 
             if (empty($composer['time'])) {
-                $output = $this->execute('svn info', $this->baseUrl . $path . $rev);
-                foreach ($this->process->splitLines($output) as $line) {
-                    if ($line && preg_match('{^Last Changed Date: ([^(]+)}', $line, $match)) {
-                        $date = new \DateTime($match[1], new \DateTimeZone('UTC'));
-                        $composer['time'] = $date->format('Y-m-d H:i:s');
-                        break;
-                    }
+                if (array_key_exists($identifier, $this->lastCommitTimes)) {
+                    $timeOfLastCommit = $this->lastCommitTimes[$identifier];
+                } else {
+                    $timeOfLastCommit = $this->repository->getDirectory($path, $rev ?: null)
+                        ->getLastCommit()
+                            ->getDate();
+                }
+
+                if ($timeOfLastCommit) {
+                    $composer['time'] = $timeOfLastCommit->format('Y-m-d H:i:s');
                 }
             }
 
-            $this->cache->write($identifier.'.json', json_encode($composer));
-            $this->infoCache[$identifier] = $composer;
+            $this->cache->write($normalizedId.'.json', json_encode($composer));
+            $this->infoCache[$normalizedId] = $composer;
         }
 
-        return $this->infoCache[$identifier];
+        return $this->infoCache[$normalizedId];
     }
 
     /**
@@ -173,22 +215,12 @@ class SvnDriver extends VcsDriver
     {
         if (null === $this->tags) {
             $this->tags = array();
-
-            if ($this->tagsPath !== false) {
-                $output = $this->execute('svn ls --verbose', $this->baseUrl . '/' . $this->tagsPath);
-                if ($output) {
-                    foreach ($this->process->splitLines($output) as $line) {
-                        $line = trim($line);
-                        if ($line && preg_match('{^\s*(\S+).*?(\S+)\s*$}', $line, $match)) {
-                            if (isset($match[1]) && isset($match[2]) && $match[2] !== './') {
-                                $this->tags[rtrim($match[2], '/')] = $this->buildIdentifier(
-                                    '/' . $this->tagsPath . '/' . $match[2],
-                                    $match[1]
-                                );
-                            }
-                        }
-                    }
-                }
+            
+            foreach ($this->getTagDirs() as $dir) {
+                /* @var $dir \FutureSVN\Repository\Directory */
+                $identifier = $this->buildIdentifier($dir->getPath(), $dir->getRevision());
+                $this->tags[$dir->getName()] = $identifier;
+                $this->lastCommitTimes[$identifier] = $dir->getLastCommit()->getDate();
             }
         }
 
@@ -202,46 +234,22 @@ class SvnDriver extends VcsDriver
     {
         if (null === $this->branches) {
             $this->branches = array();
-
-            if (false === $this->trunkPath) {
-                $trunkParent = $this->baseUrl . '/';
-            } else {
-                $trunkParent = $this->baseUrl . '/' . $this->trunkPath;
+            
+            $lastCommitToTrunk = $this->getLastCommitToTrunk();
+            if ($lastCommitToTrunk->getRevision()) {
+                $this->branches['trunk'] = $this->buildIdentifier(
+                    '/' . $this->trunkPath,
+                    $lastCommitToTrunk->getRevision()
+                );
+                $this->rootIdentifier = $this->branches['trunk'];
+                $this->lastCommitTimes[$this->rootIdentifier] = $lastCommitToTrunk->getDate();
             }
-
-            $output = $this->execute('svn ls --verbose', $trunkParent);
-            if ($output) {
-                foreach ($this->process->splitLines($output) as $line) {
-                    $line = trim($line);
-                    if ($line && preg_match('{^\s*(\S+).*?(\S+)\s*$}', $line, $match)) {
-                        if (isset($match[1]) && isset($match[2]) && $match[2] === './') {
-                            $this->branches['trunk'] = $this->buildIdentifier(
-                                '/' . $this->trunkPath,
-                                $match[1]
-                            );
-                            $this->rootIdentifier = $this->branches['trunk'];
-                            break;
-                        }
-                    }
-                }
-            }
-            unset($output);
-
-            if ($this->branchesPath !== false) {
-                $output = $this->execute('svn ls --verbose', $this->baseUrl . '/' . $this->branchesPath);
-                if ($output) {
-                    foreach ($this->process->splitLines(trim($output)) as $line) {
-                        $line = trim($line);
-                        if ($line && preg_match('{^\s*(\S+).*?(\S+)\s*$}', $line, $match)) {
-                            if (isset($match[1]) && isset($match[2]) && $match[2] !== './') {
-                                $this->branches[rtrim($match[2], '/')] = $this->buildIdentifier(
-                                    '/' . $this->branchesPath . '/' . $match[2],
-                                    $match[1]
-                                );
-                            }
-                        }
-                    }
-                }
+            
+            foreach ($this->getBranchDirs() as $dir) {
+                /* @var $dir \FutureSVN\Repository\Directory */
+                $identifier = $this->buildIdentifier($dir->getPath(), $dir->getRevision());
+                $this->branches[$dir->getName()] = $identifier;
+                $this->lastCommitTimes[$identifier] = $dir->getLastCommit()->getDate();
             }
         }
 
@@ -283,7 +291,78 @@ class SvnDriver extends VcsDriver
 
         return false;
     }
+    
+    /**
+     * @return \FutureSVN\FutureCommit
+     */
+    private function getLastCommitToTrunk()
+    {
+        if (!$this->lastCommitToTrunk) {
+            $trunkPath = (string)$this->trunkPath;
+            $commit = $this->repository->getDirectory($trunkPath)->getLastCommit();
+            $that = $this;
+            $rootIdentifier = &$this->rootIdentifier;
+            $commit->then(function (FutureCommit $commit) use ($that, $trunkPath, &$rootIdentifier) {
+                if ($rev = $commit->getRevision()) {
+                    $rootIdentifier = $that->buildIdentifier(
+                        '/' . $trunkPath,
+                        $commit->getRevision()
+                    );
+                    $that->downloadComposerFile($rootIdentifier);
+                }
+            });
+            $this->lastCommitToTrunk = $commit;
+        }
+        
+        return $this->lastCommitToTrunk;
+    }
+    
+    /**
+     * @return array|\FutureSVN\Repository\FutureNodeCollection
+     */
+    private function getBranchDirs()
+    {
+        if (is_null($this->branchDirs)) {
+            $this->branchDirs = $this->loadPackageDirs($this->branchesPath);
+        }
+        
+        return $this->branchDirs;
+    }
 
+    /**
+     * @return array|\FutureSVN\Repository\FutureNodeCollection
+     */
+    private function getTagDirs()
+    {
+        if (is_null($this->tagDirs)) {
+            $this->tagDirs = $this->loadPackageDirs($this->tagsPath);
+        }
+        
+        return $this->tagDirs;
+    }
+    
+    private function loadPackageDirs($path)
+    {
+        if (false === $path) {
+            return array();
+        }
+        
+        $collection = $this->repository->getDirectory($path)->getDirectories();
+        
+        $that = $this;
+        $collection->then(function (FutureNodeCollection $dirs) use ($that) {
+            foreach ($dirs as $dir) {
+                /* @var $dir \FutureSVN\Repository\Directory */
+                if ($rev = $dir->getRevision()) {
+                    $identifier = $that->buildIdentifier($dir->getPath(), $rev);
+                    $that->downloadComposerFile($identifier);
+                }
+            }
+        });
+        
+        return $collection;
+    }
+    
     /**
      * An absolute path (leading '/') is converted to a file:// url.
      *
@@ -302,35 +381,6 @@ class SvnDriver extends VcsDriver
     }
 
     /**
-     * Execute an SVN command and try to fix up the process with credentials
-     * if necessary.
-     *
-     * @param  string            $command The svn command to run.
-     * @param  string            $url     The SVN URL.
-     * @throws \RuntimeException
-     * @return string
-     */
-    protected function execute($command, $url)
-    {
-        if (null === $this->util) {
-            $this->util = new SvnUtil($this->baseUrl, $this->io, $this->config, $this->process);
-            $this->util->setCacheCredentials($this->cacheCredentials);
-        }
-
-        try {
-            return $this->util->execute($command, $url);
-        } catch (\RuntimeException $e) {
-            if (0 !== $this->process->execute('svn --version', $ignoredOutput)) {
-                throw new \RuntimeException('Failed to load '.$this->url.', svn was not found, check that it is installed and in your PATH env.' . "\n\n" . $this->process->getErrorOutput());
-            }
-
-            throw new \RuntimeException(
-                'Repository '.$this->url.' could not be processed, '.$e->getMessage()
-            );
-        }
-    }
-
-    /**
      * Build the identifier respecting "package-path" config option
      *
      * @param string $baseDir  The path to trunk/branch/tag
@@ -338,7 +388,7 @@ class SvnDriver extends VcsDriver
      *
      * @return string
      */
-    protected function buildIdentifier($baseDir, $revision)
+    public function buildIdentifier($baseDir, $revision)
     {
         return rtrim($baseDir, '/') . $this->packagePath . '/@' . $revision;
     }

@@ -38,6 +38,7 @@ class VcsRepository extends ArrayRepository
     protected $loader;
     protected $repoConfig;
     protected $branchErrorOccurred = false;
+    protected $driver;
 
     public function __construct(array $repoConfig, IOInterface $io, Config $config, EventDispatcher $dispatcher = null, array $drivers = null)
     {
@@ -58,6 +59,8 @@ class VcsRepository extends ArrayRepository
         $this->verbose = $io->isVerbose();
         $this->config = $config;
         $this->repoConfig = $repoConfig;
+        
+        $this->getDriver();
     }
 
     public function getRepoConfig()
@@ -69,8 +72,17 @@ class VcsRepository extends ArrayRepository
     {
         $this->loader = $loader;
     }
-
+    
     public function getDriver()
+    {
+        if (!$this->driver) {
+            $this->driver = $this->createDriver();
+        }
+        
+        return $this->driver;
+    }
+
+    protected function createDriver()
     {
         if (isset($this->drivers[$this->type])) {
             $class = $this->drivers[$this->type];

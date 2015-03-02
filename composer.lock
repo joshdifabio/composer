@@ -4,8 +4,101 @@
         "Read more about it at http://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "hash": "0aebec3992608f24110593481334c989",
+    "hash": "9e055af5bd9e76a27e127da7571e0bc1",
     "packages": [
+        {
+            "name": "joshdifabio/future-process",
+            "version": "dev-master",
+            "source": {
+                "type": "git",
+                "url": "/vagrant/public/future-process",
+                "reference": "7084948a3c9b3a5ba8d7f9410300ec3a7fdf633f"
+            },
+            "require": {
+                "php": ">=5.3.0",
+                "react/promise": "~1.0|~2.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "~3.5|~4.0",
+                "satooshi/php-coveralls": "dev-master",
+                "symfony/process": "~2.2"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "FutureProcess\\": "src"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "FutureProcess\\": "tests"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Josh Di Fabio",
+                    "email": "joshdifabio@gmail.com"
+                }
+            ],
+            "description": "Process execution for PHP using futures and promises",
+            "keywords": [
+                "child-process",
+                "process",
+                "promise",
+                "react"
+            ],
+            "time": "2015-02-21 18:51:09"
+        },
+        {
+            "name": "joshdifabio/future-svn",
+            "version": "dev-master",
+            "source": {
+                "type": "git",
+                "url": "/vagrant/public/svn-client",
+                "reference": "8d2f2cfed8769ccaae05e994052adc8cff63c538"
+            },
+            "require": {
+                "joshdifabio/future-process": "dev-master",
+                "php": ">=5.3.0",
+                "react/promise": "~1.0|~2.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "~3.5|~4.0",
+                "satooshi/php-coveralls": "dev-master"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "FutureSVN\\": "src"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "FutureSVN\\": "tests"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Joshua Di Fabio",
+                    "email": "joshdifabio@gmail.com"
+                }
+            ],
+            "description": "SVN client for PHP using futures and promises",
+            "keywords": [
+                "client",
+                "promise",
+                "react",
+                "subversion",
+                "svn"
+            ],
+            "time": "2015-02-28 20:50:51"
+        },
         {
             "name": "justinrainbow/json-schema",
             "version": "1.3.7",
@@ -71,6 +164,50 @@
                 "schema"
             ],
             "time": "2014-08-25 02:48:14"
+        },
+        {
+            "name": "react/promise",
+            "version": "v2.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/reactphp/promise.git",
+                "reference": "365fcee430dfa4ace1fbc75737ca60ceea7eeeef"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/reactphp/promise/zipball/365fcee430dfa4ace1fbc75737ca60ceea7eeeef",
+                "reference": "365fcee430dfa4ace1fbc75737ca60ceea7eeeef",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.4.0"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "2.0-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "React\\Promise\\": "src/"
+                },
+                "files": [
+                    "src/functions_include.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Jan Sorgalla",
+                    "email": "jsorgalla@googlemail.com"
+                }
+            ],
+            "description": "A lightweight implementation of CommonJS Promises/A for PHP",
+            "time": "2014-12-30 13:32:42"
         },
         {
             "name": "seld/jsonlint",
@@ -1225,7 +1362,10 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {
+        "joshdifabio/future-process": 20,
+        "joshdifabio/future-svn": 20
+    },
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {

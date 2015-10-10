@@ -145,8 +145,6 @@ EOT
         }
 
         $composer = Factory::create($io, null, $disablePlugins);
-        $composer->getDownloadManager()->setOutputProgress(!$noProgress);
-
         $fs = new Filesystem();
 
         if ($noScripts === false) {
@@ -316,8 +314,7 @@ EOT
         $io->writeError('<info>Created project in ' . $directory . '</info>');
         chdir($directory);
 
-        $_SERVER['COMPOSER_ROOT_VERSION'] = $package->getPrettyVersion();
-        putenv('COMPOSER_ROOT_VERSION='.$_SERVER['COMPOSER_ROOT_VERSION']);
+        putenv('COMPOSER_ROOT_VERSION='.$package->getPrettyVersion());
 
         return $installedFromVcs;
     }

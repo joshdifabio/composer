@@ -42,8 +42,7 @@ class AllFunctionalTest extends \PHPUnit_Framework_TestCase
         }
         if ($this->oldenv) {
             $fs->removeDirectory(getenv('COMPOSER_HOME'));
-            $_SERVER['COMPOSER_HOME'] = $this->oldenv;
-            putenv('COMPOSER_HOME='.$_SERVER['COMPOSER_HOME']);
+            putenv('COMPOSER_HOME='.$this->oldenv);
             $this->oldenv = null;
         }
     }
@@ -87,8 +86,7 @@ class AllFunctionalTest extends \PHPUnit_Framework_TestCase
         $testData = $this->parseTestFile($testFile);
 
         $this->oldenv = getenv('COMPOSER_HOME');
-        $_SERVER['COMPOSER_HOME'] = $this->testDir.'home';
-        putenv('COMPOSER_HOME='.$_SERVER['COMPOSER_HOME']);
+        putenv('COMPOSER_HOME='.$this->testDir.'home');
 
         $cmd = 'php '.escapeshellarg(self::$pharPath).' --no-ansi '.$testData['RUN'];
         $proc = new Process($cmd, __DIR__.'/Fixtures/functional', null, null, 300);

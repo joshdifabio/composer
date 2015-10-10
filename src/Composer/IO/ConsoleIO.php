@@ -163,6 +163,15 @@ class ConsoleIO extends BaseIO
             $output = $this->output;
         }
 
+        if (!$output->isDecorated()) {
+            if (!$messages) {
+                return;
+            }
+
+            $this->doWrite($messages, count($messages) === 1 || $newline, $stderr);
+            return;
+        }
+
         // messages can be an array, let's convert it to string anyway
         $messages = join($newline ? "\n" : '', (array) $messages);
 
@@ -188,12 +197,7 @@ class ConsoleIO extends BaseIO
         if ($newline) {
             $this->doWrite('', true, $stderr);
         }
-
-        if ($stderr) {
-            $this->lastMessageErr = $messages;
-        } else {
-            $this->lastMessage = $messages;
-        }
+        $this->lastMessage = $messages;
     }
 
     /**

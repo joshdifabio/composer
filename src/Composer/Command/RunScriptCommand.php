@@ -87,8 +87,7 @@ EOT
         // add the bin dir to the PATH to make local binaries of deps usable in scripts
         $binDir = $composer->getConfig()->get('bin-dir');
         if (is_dir($binDir)) {
-            $_SERVER['PATH'] = realpath($binDir).PATH_SEPARATOR.getenv('PATH');
-            putenv('PATH='.$_SERVER['PATH']);
+            putenv('PATH='.realpath($binDir).PATH_SEPARATOR.getenv('PATH'));
         }
 
         $args = $input->getArgument('args');
